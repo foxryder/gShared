@@ -87,3 +87,10 @@ ENV/
 
 # Rope project settings
 .ropeproject
+
+config.py
+*.json
+*.pyc
+*.jpg
+*.log
+
