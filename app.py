@@ -25,6 +25,7 @@ api = Api(app)
 
 
 parser = reqparse.RequestParser()
+parser.add_argument('mode')
 parser.add_argument('url')
 parser.add_argument('remixFlag')
 parser.add_argument('token')
@@ -33,7 +34,31 @@ class ReceiveRequest(Resource):
     def post(self):
         try:
             args = parser.parse_args()
-            if 'youtu' in args['url']:
+
+            mode = args['mode']
+            if mode == 1:
+                newUser(args)
+            elif mode == 2: 
+                download(args)
+            else:
+                app.logger.info('Wrong mode argument ' + args['mode'])
+        except Exception as e:
+            app.logger.error('Error parsing mode argument '+ repr(e))
+
+    def get(self):
+        return
+
+def newUser(args):
+    try:
+        save_token(args)
+        return {'error':0}
+    except Exception as e:
+        app.logger.error('Error setting new User '+ repr(e))
+    
+
+def download(args):
+    try:
+        if 'youtu' in args['url']:
                 app.logger.info("Request: " + args['url'])
                 t = threading.Thread(target=youtubedl,args=(args,))
                 t.start()
@@ -45,8 +70,6 @@ class ReceiveRequest(Resource):
             app.logger.error('Failed to parse link '+ args['url'])
             return {'error': 154}
 
-    def get(self):
-        return
 
 class MyLogger(object):
     def debug(self, msg):
@@ -66,7 +89,7 @@ def my_hook(d):
 
 def youtubedl(args):
     try:
-        save_token(args)
+        #save_token(args)
         link = args['url']
 	remix = args['remixFlag']
 	print (type(remix))
