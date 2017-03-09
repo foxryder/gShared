@@ -59,16 +59,16 @@ def newUser(args):
 def download(args):
     try:
         if 'youtu' in args['url']:
-                app.logger.info("Request: " + args['url'])
-                t = threading.Thread(target=youtubedl,args=(args,))
-                t.start()
-            else:
-                return {'error':202}
+            app.logger.info("Request: " + args['url'])
+            t = threading.Thread(target=youtubedl,args=(args,))
+            t.start()
+        else:
+            return {'error':202}
 
             return {'error': 0}
-        except:
-            app.logger.error('Failed to parse link '+ args['url'])
-            return {'error': 154}
+    except Exception as e:
+        app.logger.error('Failed to parse link: '+ args['url'] +' , '+ repr(e))
+        return {'error': 154}
 
 
 class MyLogger(object):
