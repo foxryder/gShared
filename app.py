@@ -32,6 +32,9 @@ parser.add_argument('mode')
 parser.add_argument('url')
 parser.add_argument('flag')
 parser.add_argument('token')
+parser.add_argument('library')
+
+libraries = json.loads(libraries)
 
 class ReceiveRequest(Resource):
     def post(self):
@@ -49,6 +52,14 @@ class ReceiveRequest(Resource):
                     return {'error':0}
                 else:
                     return {'error':43}
+            elif mode == 3:
+                l = []
+                for library in libraries['libraries']:
+                    d = {}
+                    d['name'] = library['name']
+                    l.append(d)
+                return l
+                
             else:
                 app.logger.info('Wrong mode argument ' + args['mode'])
         except Exception as e:
@@ -102,6 +113,9 @@ def youtubedl(args):
         #save_token(args)
         link = args['url']
         remix = args['flag']
+        for lib in libraries['libraries']:
+            if lib['name'] is args['name']:
+                libLocation = lib['location']
         print (type(remix))
         ydl_opts = {
             'format': 'bestaudio/best',
@@ -120,17 +134,17 @@ def youtubedl(args):
             id = info_dict.get('id', None)
             fileid = id + '.mp3'
             if int(remix) != 0:
-                manualTagging(video_title, fileid)
+                manualTagging(video_title, fileid, libLocation)
             else:
-                if start_reckon(fileid,video_title) is False:
-                    manualTagging(video_title, fileid)
+                if start_reckon(fileid,video_title, libLocation) is False:
+                    manualTagging(video_title, fileid, libLocation)
             app.logger.info('Successfully downloaded '+ video_title+ ' at '+ link)
         print "Done"
 
     except Exception, e:
         app.logger.error('Download failed: '+ repr(e))
 
-def manualTagging(video_title, fileid):
+def manualTagging(video_title, fileid, libLocation):
     try:
         tag = re.split("-+|\[?", video_title)
         audiofile = eyed3.load(fileid)
@@ -144,15 +158,15 @@ def manualTagging(video_title, fileid):
             title = tag[0].strip()
             audiofile.tag.title = title
         audiofile.tag.save()
-        moveFile(artist+' - '+title, fileid)
+        moveFile(artist+' - '+title, fileid, libLocation)
     except Exception as e:
         app.logger.error('Manual tagging failed: '+ repr(e))
 
-def moveFile(filename, fileid):
+def moveFile(filename, fileid, libLocation):
     try:
         push_notify('Neuer Song auf Plex!', filename + u' ist jetzt verfügbar.')
         newPath = filename +'.mp3'
-        shutil.move(fileid, location+newPath)
+        shutil.move(fileid, libLocation+newPath)
     except Exception as e:
         app.logger.error('Moving file failed: '+str(e))
 
@@ -247,7 +261,7 @@ def get_cover_url(parsed_json):
 
 
 
-def start_reckon(fileid, video_title):
+def start_reckon(fileid, video_title, libLocation):
     try:
 
         '''This module can recognize ACRCloud by most of audio/video file.
@@ -282,7 +296,7 @@ def start_reckon(fileid, video_title):
             audiofile.tag.images.set(3, imagedata, "image/jpeg", unicode(album))
         audiofile.tag.save()
         app.logger.info('Successfully tagged ' + artist_string + ' - ' + title)
-        moveFile(artist_string+ ' - ' +title, fileid)
+        moveFile(artist_string+ ' - ' +title, fileid, libLocation)
         return True
     except Exception as e:
         app.logger.error("Tagging Error: "+ repr(e))
