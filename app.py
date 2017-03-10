@@ -27,7 +27,7 @@ api = Api(app)
 parser = reqparse.RequestParser()
 parser.add_argument('mode')
 parser.add_argument('url')
-parser.add_argument('remixFlag')
+parser.add_argument('flag')
 parser.add_argument('token')
 
 class ReceiveRequest(Resource):
@@ -35,15 +35,22 @@ class ReceiveRequest(Resource):
         try:
             args = parser.parse_args()
 
-            mode = args['mode']
+            mode = int(args['mode'])
             if mode == 1:
-                newUser(args)
-            elif mode == 2: 
-                download(args)
+                if newUser(args):
+		    return {'error':0}
+		else:
+		    return {'error':42}
+            elif mode == 2:
+                if download(args):
+                    return {'error':0}
+                else:
+                    return {'error':43}
             else:
                 app.logger.info('Wrong mode argument ' + args['mode'])
         except Exception as e:
             app.logger.error('Error parsing mode argument '+ repr(e))
+	    return {'error':45}
 
     def get(self):
         return
@@ -51,10 +58,10 @@ class ReceiveRequest(Resource):
 def newUser(args):
     try:
         save_token(args)
-        return {'error':0}
+	return True
     except Exception as e:
         app.logger.error('Error setting new User '+ repr(e))
-    
+	return False
 
 def download(args):
     try:
@@ -62,13 +69,13 @@ def download(args):
             app.logger.info("Request: " + args['url'])
             t = threading.Thread(target=youtubedl,args=(args,))
             t.start()
+	    return True
         else:
-            return {'error':202}
+            return False
 
-            return {'error': 0}
     except Exception as e:
         app.logger.error('Failed to parse link: '+ args['url'] +' , '+ repr(e))
-        return {'error': 154}
+        return False
 
 
 class MyLogger(object):
@@ -91,7 +98,7 @@ def youtubedl(args):
     try:
         #save_token(args)
         link = args['url']
-	remix = args['remixFlag']
+	remix = args['flag']
 	print (type(remix))
         ydl_opts = {
             'format': 'bestaudio/best',
