@@ -150,9 +150,9 @@ def manualTagging(video_title, fileid):
 
 def moveFile(filename, fileid):
     try:
-        #push_notify('Neuer Song auf Plex!', filename + u' ist jetzt verfügbar.')
+        push_notify('Neuer Song auf Plex!', filename + u' ist jetzt verfügbar.')
         newPath = filename +'.mp3'
-        #shutil.move(fileid, location+newPath)
+        shutil.move(fileid, location+newPath)
     except Exception as e:
         app.logger.error('Moving file failed: '+str(e))
 
