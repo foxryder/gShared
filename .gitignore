@@ -93,4 +93,4 @@ config.py
 *.pyc
 *.jpg
 *.log
-
+*.mp3

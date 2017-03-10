@@ -150,9 +150,9 @@ def manualTagging(video_title, fileid):
 
 def moveFile(filename, fileid):
     try:
-        push_notify('Neuer Song auf Plex!', filename + u' ist jetzt verfügbar.')
+        #push_notify('Neuer Song auf Plex!', filename + u' ist jetzt verfügbar.')
         newPath = filename +'.mp3'
-        shutil.move(fileid, location+newPath)
+        #shutil.move(fileid, location+newPath)
     except Exception as e:
         app.logger.error('Moving file failed: '+str(e))
 
@@ -161,7 +161,7 @@ def fingerprint(rec, offset, fileid, video_title):
         if offset > 120:
             return False
         response = rec.recognize_by_file(fileid, offset)
-        
+
         parsed_json = json.loads(response)
         if parsed_json['status']['code'] is 0:
             if similar(video_title,parsed_json):
@@ -181,21 +181,23 @@ def similar(video_title,parsed_json):
         artists = parsed_json['metadata']['music'][0]['artists']
         title = parsed_json['metadata']['music'][0]['title']
         artist_list = []
-        tags = re.match(r"(.*) - ([a-zA-Z0-9_'& ]*)", "Tujamo ft. Inaya Day - Keep Pushin' (new [Song]").groups()
+        tags = re.match(r"(.*) - ([a-zA-Z0-9_'& ]*)", video_title).groups()
         video_artist = tags[0]
         video_trackname = tags[1]
         for artist in artists:
             artist_list.append(artist['name'])
         artist_string = ', '.join(artist_list)
+
+        app.logger.info("ACR_Artist: "+ artist_string + '; Video_Artist: '+video_artist)
         if fuzzy(video_artist,artist_string) >= 60 and fuzzy(video_trackname,title) >= 60:
             return True
         else:
             return False
     except Exception as e:
         app.logger.error('Error in function similar: '+ repr(e))
-    
+
 def fuzzy(a,b):
-    return fuzz.partial_ratio(a,b)     
+    return fuzz.partial_ratio(a,b)
 
 
 def get_external_ids(json, service):
@@ -210,17 +212,17 @@ def get_cover_url(parsed_json):
     try:
         spotify_id = get_external_ids(parsed_json, 'spotify')
         itunes_id = get_external_ids(parsed_json, 'itunes')
-
+	cover_url = 0
 
         if spotify_id != 0:
             api_response = urllib2.urlopen('https://api.spotify.com/v1/tracks/'+spotify_id)
             music_service_json = json.load(api_response)
-        if music_service_json['album']['artists'][0]['name'] is "Various Artists":
-            cover_url = 0
-        else:
-            app.logger.info("Cover Art found")
-            cover_url = music_service_json['album']['images'][0]['url']
-            return cover_url
+            if music_service_json['album']['artists'][0]['name'] is "Various Artists":
+                cover_url = 0
+            else:
+                app.logger.info("Cover Art found")
+                cover_url = music_service_json['album']['images'][0]['url']
+                return cover_url
 
 
         if itunes_id != 0:
@@ -239,7 +241,9 @@ def get_cover_url(parsed_json):
 
     except Exception, e:
         app.logger.error("Cover URl retrieval failed: "+ repr(e))
-    return 0
+        return 0
+
+
 
 
 
@@ -251,7 +255,12 @@ def start_reckon(fileid, video_title):
             Video: mp4, mkv, wmv, flv, ts, avi ...'''
         rec = ACRCloudRecognizer(acrcloud_config)
 
+
         parsed_json = fingerprint(rec, 60, fileid, video_title)
+
+	if parsed_json is False:
+            app.logger.info("No Song found")
+            return False
 
         cover_url = get_cover_url(parsed_json)
 
