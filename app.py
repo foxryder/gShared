@@ -1,24 +1,27 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import youtube_dl
-from flask import Flask
-from flask_restful import reqparse, abort, Api, Resource
-import eyed3
-import re
-import logging
-from logging.handlers import RotatingFileHandler
-from acrcloud.recognizer import ACRCloudRecognizer
 import json
-import sys
-import shutil
+import logging
 import os.path
-import urllib2
-import urllib
+import re
+import shutil
+import sys
 import threading
-from pyfcm import FCMNotification
-from config import *
+import urllib
+import urllib2
+from logging.handlers import RotatingFileHandler
 
+from fuzzywuzzy import fuzz
+
+import eyed3
+import youtube_dl
+from acrcloud.recognizer import ACRCloudRecognizer
+from config import *
+from flask import Flask
+from flask_restful import Api, Resource, abort, reqparse
+from pyfcm import FCMNotification
+from fuzzywuzzy import fuzz
 
 app = Flask(__name__)
 api = Api(app)
@@ -38,9 +41,9 @@ class ReceiveRequest(Resource):
             mode = int(args['mode'])
             if mode == 1:
                 if newUser(args):
-		    return {'error':0}
-		else:
-		    return {'error':42}
+                    return {'error':0}
+                else:
+                    return {'error':42}
             elif mode == 2:
                 if download(args):
                     return {'error':0}
@@ -50,7 +53,7 @@ class ReceiveRequest(Resource):
                 app.logger.info('Wrong mode argument ' + args['mode'])
         except Exception as e:
             app.logger.error('Error parsing mode argument '+ repr(e))
-	    return {'error':45}
+        return {'error':45}
 
     def get(self):
         return
@@ -58,10 +61,10 @@ class ReceiveRequest(Resource):
 def newUser(args):
     try:
         save_token(args)
-	return True
+        return True
     except Exception as e:
         app.logger.error('Error setting new User '+ repr(e))
-	return False
+    return False
 
 def download(args):
     try:
@@ -69,7 +72,7 @@ def download(args):
             app.logger.info("Request: " + args['url'])
             t = threading.Thread(target=youtubedl,args=(args,))
             t.start()
-	    return True
+            return True
         else:
             return False
 
@@ -98,8 +101,8 @@ def youtubedl(args):
     try:
         #save_token(args)
         link = args['url']
-	remix = args['flag']
-	print (type(remix))
+        remix = args['flag']
+        print (type(remix))
         ydl_opts = {
             'format': 'bestaudio/best',
             'postprocessors': [{
@@ -114,24 +117,24 @@ def youtubedl(args):
         with youtube_dl.YoutubeDL(ydl_opts) as ydl:
             info_dict = ydl.extract_info(link, download=True)
             video_title = info_dict.get('title', None)
-	    id = info_dict.get('id', None)
+            id = info_dict.get('id', None)
             fileid = id + '.mp3'
             if int(remix) != 0:
-		manualTagging(video_title,fileid)
-	    else:
-	        if start_reckon(fileid) is False:
-                    manualTagging(video_title,fileid)
+                manualTagging(video_title, fileid)
+            else:
+                if start_reckon(fileid,video_title) is False:
+                    manualTagging(video_title, fileid)
             app.logger.info('Successfully downloaded '+ video_title+ ' at '+ link)
-	    print "Done"
+        print "Done"
 
     except Exception, e:
         app.logger.error('Download failed: '+ repr(e))
 
-def manualTagging(video_title,fileid):
+def manualTagging(video_title, fileid):
     try:
-        tag = re.split("-+|\[?",video_title)
+        tag = re.split("-+|\[?", video_title)
         audiofile = eyed3.load(fileid)
-        if len(tag)>=2:
+        if len(tag) >= 2:
             title = tag[1].strip()
             artist = tag[0].strip()
             audiofile.tag.artist = artist
@@ -141,84 +144,106 @@ def manualTagging(video_title,fileid):
             title = tag[0].strip()
             audiofile.tag.title = title
         audiofile.tag.save()
-        moveFile(artist+' - '+title,fileid)
+        moveFile(artist+' - '+title, fileid)
     except Exception as e:
         app.logger.error('Manual tagging failed: '+ repr(e))
 
-def moveFile(filename,fileid):
+def moveFile(filename, fileid):
     try:
-	push_notify('Neuer Song auf Plex!', filename + u' ist jetzt verfügbar.')
-	newPath = filename +'.mp3'
+        push_notify('Neuer Song auf Plex!', filename + u' ist jetzt verfügbar.')
+        newPath = filename +'.mp3'
         shutil.move(fileid, location+newPath)
     except Exception as e:
         app.logger.error('Moving file failed: '+str(e))
 
-def fingerprint(rec,offset,fileid):
+def fingerprint(rec, offset, fileid, video_title):
     try:
         if offset > 120:
-            return false
+            return False
         response = rec.recognize_by_file(fileid, offset)
-	#f = open('song.json','w')
-	#f.write(response)
-	#f.close()
+        
         parsed_json = json.loads(response)
-        if (parsed_json['status']['code'] is 0):
-            app.logger.info("Song found")
-            return parsed_json
+        if parsed_json['status']['code'] is 0:
+            if similar(video_title,parsed_json):
+                app.logger.info("Song found")
+                return parsed_json
+            else:
+                return fingerprint(rec, offset+30, fileid, video_title)
         else:
-            return fingerprint(rec,offset+30,fileid)
+            return fingerprint(rec, offset+30, fileid, video_title)
 
 
     except:
         app.logger.error("Error while fingerprinting")
 
+def similar(video_title,parsed_json):
+    try:
+        artists = parsed_json['metadata']['music'][0]['artists']
+        title = parsed_json['metadata']['music'][0]['title']
+        artist_list = []
+        tags = re.match(r"(.*) - ([a-zA-Z0-9_'& ]*)", "Tujamo ft. Inaya Day - Keep Pushin' (new [Song]").groups()
+        video_artist = tags[0]
+        video_trackname = tags[1]
+        for artist in artists:
+            artist_list.append(artist['name'])
+        artist_string = ', '.join(artist_list)
+        if fuzzy(video_artist,artist_string) >= 60 and fuzzy(video_trackname,title) >= 60:
+            return True
+        else:
+            return False
+    except Exception as e:
+        app.logger.error('Error in function similar: '+ repr(e))
+    
+def fuzzy(a,b):
+    return fuzz.partial_ratio(a,b)     
 
-def get_external_ids(json,service):
+
+def get_external_ids(json, service):
     try:
         return  json['metadata']['music'][0]['external_metadata'][service]['track']['id']
     except Exception, e:
-	app.logger.info("No id for "+service +' available')
-	return 0
+        app.logger.info("No id for "+service +' available')
+    return 0
 
 
 def get_cover_url(parsed_json):
     try:
-        spotify_id = get_external_ids(parsed_json,'spotify')
-        itunes_id = get_external_ids(parsed_json,'itunes')
+        spotify_id = get_external_ids(parsed_json, 'spotify')
+        itunes_id = get_external_ids(parsed_json, 'itunes')
 
 
         if spotify_id != 0:
-            api_response  = urllib2.urlopen('https://api.spotify.com/v1/tracks/'+spotify_id)
+            api_response = urllib2.urlopen('https://api.spotify.com/v1/tracks/'+spotify_id)
             music_service_json = json.load(api_response)
-	    if music_service_json['album']['artists'][0]['name'] is "Various Artists":
-	        cover_url = 0
-	    else:
-		app.logger.info("Cover Art found")
-                cover_url = music_service_json['album']['images'][0]['url']
-		return cover_url
+        if music_service_json['album']['artists'][0]['name'] is "Various Artists":
+            cover_url = 0
+        else:
+            app.logger.info("Cover Art found")
+            cover_url = music_service_json['album']['images'][0]['url']
+            return cover_url
 
 
-	if itunes_id != 0:
-            api_response  = urllib2.urlopen('https://itunes.apple.com/lookup?id='+str(itunes_id))
+        if itunes_id != 0:
+            api_response = urllib2.urlopen('https://itunes.apple.com/lookup?id='+str(itunes_id))
             music_service_json = json.load(api_response)
-	    if music_service_json['results'][0]['collectionArtistName'] is "Various Artists":
-		cover_url = 0
-	    else:
+            if music_service_json['results'][0]['collectionArtistName'] is "Various Artists":
+                cover_url = 0
+            else:
                 cover_url = music_service_json['results'][0]['artworkUrl100']
-                cover_url = cover_url.replace('100x100','500x500')
-		app.logger.info("Cover Art found")
-		return cover_url
+                cover_url = cover_url.replace('100x100', '500x500')
+                app.logger.info("Cover Art found")
+                return cover_url
 
         app.logger.info("No Cover Art found")
-	return cover_url
+        return cover_url
 
     except Exception, e:
-	app.logger.error("Cover URl retrieval failed: "+ repr(e))
-	return 0
+        app.logger.error("Cover URl retrieval failed: "+ repr(e))
+    return 0
 
 
 
-def start_reckon(fileid):
+def start_reckon(fileid, video_title):
     try:
 
         '''This module can recognize ACRCloud by most of audio/video file.
@@ -226,9 +251,9 @@ def start_reckon(fileid):
             Video: mp4, mkv, wmv, flv, ts, avi ...'''
         rec = ACRCloudRecognizer(acrcloud_config)
 
-        parsed_json = fingerprint(rec,60,fileid)
+        parsed_json = fingerprint(rec, 60, fileid, video_title)
 
-	cover_url = get_cover_url(parsed_json)
+        cover_url = get_cover_url(parsed_json)
 
         album = parsed_json['metadata']['music'][0]['album']['name']
         artists = parsed_json['metadata']['music'][0]['artists']
@@ -236,21 +261,21 @@ def start_reckon(fileid):
         artist_list = []
         for artist in artists:
             artist_list.append(artist['name'])
-        artist_string= ', '.join(artist_list)
+        artist_string = ', '.join(artist_list)
         audiofile = eyed3.load(fileid)
         audiofile.tag.artist = unicode(artist_string)
         audiofile.tag.album = unicode(album)
         audiofile.tag.title = unicode(title)
         audiofile.tag.album_artist = unicode(artist_string)
         if cover_url != 0:
-	    urllib.urlretrieve(cover_url, "cover.jpg")
+            urllib.urlretrieve(cover_url, "cover.jpg")
             imagedata = open("cover.jpg", "rb").read()
             audiofile.tag.images.set(3, imagedata, "image/jpeg", unicode(album))
         audiofile.tag.save()
         app.logger.info('Successfully tagged ' + artist_string + ' - ' + title)
-        moveFile(artist_string+ ' - ' +title,fileid)
+        moveFile(artist_string+ ' - ' +title, fileid)
         return True
-    except Exception, e:
+    except Exception as e:
         app.logger.error("Tagging Error: "+ repr(e))
         return False
 
@@ -278,17 +303,17 @@ def save_token(args):
 def push_notify(title,body):
     try:
         push_service = FCMNotification(api_key=firebase_api)
-        with open(tokenLocation,'r') as file:
-            token_json  = json.loads(file.read())
-        registration_ids=token_json["Token"]
+        with open(tokenLocation, 'r') as file:
+            token_json = json.loads(file.read())
+        registration_ids = token_json["Token"]
         valid_registration_ids = push_service.clean_registration_ids(registration_ids)
-        result = result = push_service.notify_multiple_devices(registration_ids=valid_registration_ids, message_title=title, message_body=body)
+        result = push_service.notify_multiple_devices(registration_ids=valid_registration_ids, message_title=title, message_body=body)
     except Exception as e:
         app.logger.error("Error sending push notification: "+ repr(e))
 
 class Debug(Resource):
     def get(self):
-	start_reckon()
+        start_reckon()
 
 
 api.add_resource(ReceiveRequest, '/')
