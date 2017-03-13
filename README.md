@@ -18,10 +18,13 @@ firebase_api = "" # firebase Cloud Messaging Key
 
 logLocation = '' # Location of log file
 location = '' # Storing location of music (music folder)
-tokenLocation = 'token.json' # Location of APP Firebase Instance Token (used for Push notification)´´´
+tokenLocation = 'token.json' # Location of APP Firebase Instance Token (used for Push notification)
+```
+sdf
+
 
 ´´´python
 pip install -r requirements.txt
-python setup.py install´´´
+python setup.py install```
 
 
