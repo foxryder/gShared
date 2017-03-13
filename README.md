@@ -2,7 +2,7 @@
 
 SETUP
 
-Python 2.7 and python pip is required
+Python 2.7, python pip and ffmpeg are required
 
 config File 
 config.py
