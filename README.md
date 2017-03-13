@@ -28,6 +28,7 @@ Install
 ```python
 pip install -r requirements.txt
 python setup.py install
+python app.py
 ```
 
 
