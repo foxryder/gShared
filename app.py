@@ -54,6 +54,7 @@ class ReceiveRequest(Resource):
                     return {'error':43}
             elif mode == 3:
                 app.logger.info('Library Request')
+                save_token(args)
                 l = []
                 for library in libraries['libraries']:
                     d = {}
@@ -113,6 +114,7 @@ def youtubedl(args):
         #save_token(args)
         link = args['url']
         libLocation = ''
+        library = args['library']
         for lib in libraries['libraries']:
             if lib['name'] == args['library']:
                 libLocation = lib['location']
@@ -135,15 +137,15 @@ def youtubedl(args):
             video_title = info_dict.get('title', None)
             id = info_dict.get('id', None)
             fileid = id + '.mp3'
-            if start_reckon(fileid,video_title, libLocation) is False:
-                manualTagging(video_title, fileid, libLocation)
+            if start_reckon(fileid,video_title, libLocation,library) is False:
+                manualTagging(video_title, fileid, libLocation,library)
             app.logger.info('Successfully downloaded '+ video_title+ ' at '+ link)
         print "Done"
 
     except Exception, e:
         app.logger.error('Download failed: '+ repr(e))
 
-def manualTagging(video_title, fileid, libLocation):
+def manualTagging(video_title, fileid, libLocation, library):
     try:
         tag = re.split("-+|\[?", video_title)
         audiofile = eyed3.load(fileid)
@@ -157,13 +159,13 @@ def manualTagging(video_title, fileid, libLocation):
             title = tag[0].strip()
             audiofile.tag.title = title
         audiofile.tag.save()
-        moveFile(artist+' - '+title, fileid, libLocation)
+        moveFile(artist+' - '+title, fileid, libLocation,library)
     except Exception as e:
         app.logger.error('Manual tagging failed: '+ repr(e))
 
-def moveFile(filename, fileid, libLocation):
+def moveFile(filename, fileid, libLocation,library):
     try:
-        push_notify('Neuer Song auf Plex!', filename + u' ist jetzt verfügbar.')
+        push_notify('Neuer Song auf Plex!', filename + u' ist jetzt verfügbar.',library)
         newPath = filename +'.mp3'
         shutil.move(fileid, libLocation+newPath)
     except Exception as e:
@@ -260,7 +262,7 @@ def get_cover_url(parsed_json):
 
 
 
-def start_reckon(fileid, video_title, libLocation):
+def start_reckon(fileid, video_title, libLocation,library):
     try:
 
         '''This module can recognize ACRCloud by most of audio/video file.
@@ -295,7 +297,7 @@ def start_reckon(fileid, video_title, libLocation):
             audiofile.tag.images.set(3, imagedata, "image/jpeg", unicode(album))
         audiofile.tag.save()
         app.logger.info('Successfully tagged ' + artist_string + ' - ' + title)
-        moveFile(artist_string+ ' - ' +title, fileid, libLocation)
+        moveFile(artist_string+ ' - ' +title, fileid, libLocation,library)
         return True
     except Exception as e:
         app.logger.error("Tagging Error: "+ repr(e))
@@ -305,15 +307,31 @@ def start_reckon(fileid, video_title, libLocation):
 def save_token(args):
     try:
 	id = args['token']
+	folder = json.loads(args['library'])
         if not os.path.exists(tokenLocation):
+            l = []
+            ll = []
+            for library in libraries['libraries']:
+                d = {}
+                d['name'] = library['name']
+                d['token'] =ll 
+                l.append(d)
             with open(tokenLocation,'w') as f:
-                f.write('{"Token":[]}')
+                f.write(json.dumps(l))
         with  open(tokenLocation,'r') as token_file:
             tokens = json.loads(token_file.read())
-        if id  not in tokens['Token']:
-            tokens['Token'].append(id)
-            with open(tokenLocation,'w') as token_file:
-                json.dump(tokens,token_file)
+        for jsonobj in folder:
+            for i in xrange(len(tokens)):
+                if tokens[i]['name'] == jsonobj['name']:
+                    if id not in tokens[i]['token']:
+                        if jsonobj['checked']:
+                            tokens[i]['token'].append(id)
+                    else:
+                        if not jsonobj['checked']:
+                            tokens[i]['token'].remove(id)
+
+                    with open(tokenLocation,'w') as token_file:
+                        json.dump(tokens,token_file)
     except Exception as e:
         app.logger.error("Error saving token: "+ repr(e))
 
@@ -322,14 +340,17 @@ def save_token(args):
 
 
 
-def push_notify(title,body):
+def push_notify(title,body,library):
     try:
         push_service = FCMNotification(api_key=firebase_api)
         with open(tokenLocation, 'r') as file:
             token_json = json.loads(file.read())
-        registration_ids = token_json["Token"]
-        valid_registration_ids = push_service.clean_registration_ids(registration_ids)
-        result = push_service.notify_multiple_devices(registration_ids=valid_registration_ids, message_title=title, message_body=body)
+	for jsonobj in token_json:
+            if jsonobj['name'] == library:
+
+                registration_ids = jsonobj["token"]
+                valid_registration_ids = push_service.clean_registration_ids(registration_ids)
+                result = push_service.notify_multiple_devices(registration_ids=valid_registration_ids, message_title=title, message_body=body)
     except Exception as e:
         app.logger.error("Error sending push notification: "+ repr(e))
 
