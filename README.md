@@ -2,7 +2,7 @@
 
 SETUP
 
-Python 2.7 and python pip is required
+Python 2.7, python pip and ffmpeg are required
 
 config File 
 config.py
@@ -17,12 +17,19 @@ acrcloud_config = {
 firebase_api = "" # firebase Cloud Messaging Key
 
 logLocation = '' # Location of log file
-location = '' # Storing location of music (music folder)
-tokenLocation = 'token.json' # Location of APP Firebase Instance Token (used for Push notification)´´´
+tokenLocation = 'token.json' # Location of APP Firebase Instance Token (used for Push notification)
 
-´´´python
+
+library = '{"libraries": [{"name":"Library name", "location":"/path"}, {"name":"Library name", "location":"/path"}]}'
+```
+
+Install
+
+```python
 pip install -r requirements.txt
 python setup.py install
-´´´
+python app.py
+```
+
 
 
