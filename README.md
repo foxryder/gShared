@@ -22,7 +22,6 @@ tokenLocation = 'token.json' # Location of APP Firebase Instance Token (used for
 
 ´´´python
 pip install -r requirements.txt
-python setup.py install
-´´´
+python setup.py install´´´
 
 
