@@ -7,7 +7,7 @@ WORKDIR /app
 RUN mkdir /downloads
 RUN mkdir /logs
 VOLUME /downloads
-VOLUME /logs
+VOLUME /config
 EXPOSE 5000
 RUN pip install -r requirements.txt
 RUN python setup.py install
