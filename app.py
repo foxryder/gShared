@@ -30,7 +30,6 @@ api = Api(app)
 parser = reqparse.RequestParser()
 parser.add_argument('mode')
 parser.add_argument('url')
-parser.add_argument('flag')
 parser.add_argument('token')
 parser.add_argument('library')
 
@@ -112,11 +111,13 @@ def youtubedl(args):
     try:
         #save_token(args)
         link = args['url']
-        remix = args['flag']
+        libLocation = ''
         for lib in libraries['libraries']:
-            if lib['name'] is args['name']:
+            if lib['name'] == args['library']:
                 libLocation = lib['location']
-        print (type(remix))
+        if not libLocation: 
+            app.logger.error("No such library as "+ args['library'])
+            return False
         ydl_opts = {
             'format': 'bestaudio/best',
             'postprocessors': [{
@@ -133,11 +134,8 @@ def youtubedl(args):
             video_title = info_dict.get('title', None)
             id = info_dict.get('id', None)
             fileid = id + '.mp3'
-            if int(remix) != 0:
+            if start_reckon(fileid,video_title, libLocation) is False:
                 manualTagging(video_title, fileid, libLocation)
-            else:
-                if start_reckon(fileid,video_title, libLocation) is False:
-                    manualTagging(video_title, fileid, libLocation)
             app.logger.info('Successfully downloaded '+ video_title+ ' at '+ link)
         print "Done"
 
