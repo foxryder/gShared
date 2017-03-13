@@ -34,7 +34,7 @@ parser.add_argument('flag')
 parser.add_argument('token')
 parser.add_argument('library')
 
-libraries = json.loads(libraries)
+libraries = json.loads(library)
 
 class ReceiveRequest(Resource):
     def post(self):
@@ -53,13 +53,13 @@ class ReceiveRequest(Resource):
                 else:
                     return {'error':43}
             elif mode == 3:
+                app.logger.info('Library Request')
                 l = []
                 for library in libraries['libraries']:
                     d = {}
                     d['name'] = library['name']
                     l.append(d)
                 return l
-                
             else:
                 app.logger.info('Wrong mode argument ' + args['mode'])
         except Exception as e:
