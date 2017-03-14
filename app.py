@@ -208,7 +208,7 @@ def similar(video_title,parsed_json):
             artist_list.append(artist['name'])
         artist_string = ', '.join(artist_list)
 
-        app.logger.info("ACR_Artist: "+ artist_string + '; Video_Artist: '+video_artist)
+        app.logger.info("ACR_Artist: "+ artist_string)
         if fuzzy(video_title,artist_string) >= 40:
             return True
         else:
