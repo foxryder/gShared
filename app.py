@@ -157,7 +157,9 @@ def manualTagging(video_title, fileid, libLocation, library):
             artist = tag[0].strip()
             id = search_api(artist,title)
             if (id != 0):
-                audiofile.tag.album = get_album_by_id(id)
+                album = get_album_by_id(id)
+                audiofile.tag.album = album
+                cover_url = get_cover_by_id(id)
                 urllib.urlretrieve(cover_url, "cover.jpg")
                 imagedata = open("cover.jpg", "rb").read()
                 audiofile.tag.images.set(3, imagedata, "image/jpeg", unicode(album))
