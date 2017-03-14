@@ -22,16 +22,19 @@ from flask_restful import Api, Resource, abort, reqparse
 from pyfcm import FCMNotification
 from fuzzywuzzy import fuzz
 
+from config.config import *
+
 app = Flask(__name__)
 api = Api(app)
 
-tokenLocation = 'token.json'
+
 
 parser = reqparse.RequestParser()
 parser.add_argument('mode')
 parser.add_argument('url')
 parser.add_argument('token')
 parser.add_argument('library')
+
 
 
 libraries = json.loads(library)

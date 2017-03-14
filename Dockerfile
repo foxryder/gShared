@@ -6,10 +6,8 @@ COPY . /app
 WORKDIR /app
 RUN mkdir /downloads
 VOLUME /downloads
-VOLUME /app/config 
-COPY /app/__init__.py /app/
+VOLUME /app/config
 EXPOSE 5000
 RUN pip install -r requirements.txt
 RUN python setup.py install
-ENTRYPOINT ["python"]
-CMD ["app.py"]
+CMD sh docker_start.sh
