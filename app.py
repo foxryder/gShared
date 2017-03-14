@@ -377,7 +377,7 @@ api.add_resource(ReceiveRequest, '/')
 if __name__ == '__main__':
     if not app.debug:
         formatter = logging.Formatter("[%(asctime)s] {%(pathname)s:%(lineno)d} %(levelname)s - %(message)s")
-        handler = RotatingFileHandler(logLocation+'info.log', maxBytes=100000, backupCount=1)
+        handler = RotatingFileHandler(logLocation, maxBytes=100000, backupCount=1)
         app.logger.addHandler(handler)
         app.logger.setLevel(logging.INFO)
         handler.setFormatter(formatter)
