@@ -5,9 +5,8 @@ RUN apt-get install -y ffmpeg python-pip python python-dev build-essential
 COPY . /app
 WORKDIR /app
 RUN mkdir /downloads
-RUN mkdir /logs
 VOLUME /downloads
-VOLUME /config
+VOLUME /app/config 
 EXPOSE 5000
 RUN pip install -r requirements.txt
 RUN python setup.py install

@@ -11,7 +11,7 @@ import threading
 import urllib
 import urllib2
 from logging.handlers import RotatingFileHandler
-from config import *
+from config.config import *
 from fuzzywuzzy import fuzz
 
 import eyed3
@@ -25,7 +25,7 @@ from fuzzywuzzy import fuzz
 app = Flask(__name__)
 api = Api(app)
 
-
+tokenLocation = 'token.json'
 
 parser = reqparse.RequestParser()
 parser.add_argument('mode')
@@ -345,7 +345,7 @@ def push_notify(title,body,library):
         push_service = FCMNotification(api_key=firebase_api)
         with open(tokenLocation, 'r') as file:
             token_json = json.loads(file.read())
-	for jsonobj in token_json:
+        for jsonobj in token_json:
             if jsonobj['name'] == library:
 
                 registration_ids = jsonobj["token"]
