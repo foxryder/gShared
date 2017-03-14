@@ -155,11 +155,12 @@ def manualTagging(video_title, fileid, libLocation, library):
             audiofile.tag.artist = artist
             audiofile.tag.title = title
             audiofile.tag.album_artist = artist
+            title = artist+' - '+title
         else:
             title = tag[0].strip()
             audiofile.tag.title = title
         audiofile.tag.save()
-        moveFile(artist+' - '+title, fileid, libLocation,library)
+        moveFile(title, fileid, libLocation,library)
     except Exception as e:
         app.logger.error('Manual tagging failed: '+ repr(e))
 
