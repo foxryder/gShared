@@ -155,6 +155,12 @@ def manualTagging(video_title, fileid, libLocation, library):
         if len(tag) >= 2:
             title = tag[1].strip()
             artist = tag[0].strip()
+            id = search_api(artist,title)
+            if (id != 0):
+                audiofile.tag.album = get_album_by_id(id)
+                urllib.urlretrieve(cover_url, "cover.jpg")
+                imagedata = open("cover.jpg", "rb").read()
+                audiofile.tag.images.set(3, imagedata, "image/jpeg", unicode(album))
             audiofile.tag.artist = artist
             audiofile.tag.title = title
             audiofile.tag.album_artist = artist
@@ -174,6 +180,39 @@ def moveFile(filename, fileid, libLocation,library):
         shutil.move(fileid, libLocation+newPath)
     except Exception as e:
         app.logger.error('Moving file failed: '+str(e))
+
+def search_api(artist,title):
+    try:
+        search_string = artist+'+'+title
+        search_string = search_string.replace(' ','+')
+        api_response = urllib2.urlopen('https://api.spotify.com/v1/search?q='+search_string+'&type=track')
+        music_service_json = json.load(api_response)
+        for item in music_service_json['tracks']['items']:
+            if fuzzy(item['artists'][0]['name'],artist) >= 60:
+                return item['id']
+        return 0
+    except Exception as e:
+        app.logger.info('Search api: '+str(e))
+        return 0
+
+def get_cover_by_id(id):
+    try:
+        api_response = urllib2.urlopen('https://api.spotify.com/v1/tracks/'+id)
+        music_service_json = json.load(api_response)
+        cover_url = music_service_json['album']['images'][0]['url']
+        return cover_url
+    except Exception as e:
+        app.logger.error('Error in get_cover_by_id: '+str(e))
+        return 0
+
+def get_album_by_id(id):
+    try:
+        api_response = urllib2.urlopen('https://api.spotify.com/v1/tracks/'+id)
+        music_service_json = json.load(api_response)
+        return music_service_json['album']['name']
+    except Exception as e:
+        app.logger.error('Error in get_album_by_id: '+str(e))
+        return 0 
 
 def fingerprint(rec, offset, fileid, video_title):
     try:
@@ -234,6 +273,8 @@ def get_external_ids(json, service):
         app.logger.info("No id for "+service +' available')
     return 0
 
+
+        
 
 def get_cover_url(parsed_json):
     try:
