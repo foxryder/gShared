@@ -196,15 +196,23 @@ def similar(video_title,parsed_json):
         artists = parsed_json['metadata']['music'][0]['artists']
         title = parsed_json['metadata']['music'][0]['title']
         artist_list = []
-        tags = re.match(r"(.*) - ([a-zA-Z0-9_'& ]*)", video_title).groups()
-        video_artist = tags[0]
-        video_trackname = tags[1]
+        tagging = True
+        try:
+            tags = re.match(r"(.*) - ([a-zA-Z0-9_'& ]*)", video_title).groups()
+            video_artist = tags[0]
+            video_trackname = tags[1]
+        except:
+            tagging = False 
         for artist in artists:
             artist_list.append(artist['name'])
         artist_string = ', '.join(artist_list)
 
         app.logger.info("ACR_Artist: "+ artist_string + '; Video_Artist: '+video_artist)
-        if fuzzy(video_artist,artist_string) >= 60 and fuzzy(video_trackname,title) >= 60:
+        if fuzzy(video_title,artist_string) >= 40:
+            return True
+        else:
+            return False
+        if fuzzy(video_artist,artist_string) >= 60 and fuzzy(video_trackname,title) >= 60 and tagging:
             return True
         else:
             return False
