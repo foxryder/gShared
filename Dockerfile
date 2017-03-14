@@ -9,7 +9,6 @@ VOLUME /downloads
 VOLUME /app/config 
 COPY /app/__init__.py /app/
 EXPOSE 5000
-
 RUN pip install -r requirements.txt
 RUN python setup.py install
 ENTRYPOINT ["python"]
