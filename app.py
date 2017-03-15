@@ -388,7 +388,7 @@ def save_token(args):
                     with open(tokenLocation,'w') as token_file:
                         json.dump(tokens,token_file)
     except Exception as e:
-        app.logger.error("Error saving token: "+ repr(e))
+        app.logger.error("Error saving token: "+ str(e))
 
 
 
@@ -407,7 +407,7 @@ def push_notify(title,body,library):
                 valid_registration_ids = push_service.clean_registration_ids(registration_ids)
                 result = push_service.notify_multiple_devices(registration_ids=valid_registration_ids, message_title=title, message_body=body)
     except Exception as e:
-        app.logger.error("Error sending push notification: "+ repr(e))
+        app.logger.error("Error sending push notification: "+ str(e))
 
 class Debug(Resource):
     def get(self):
